@@ -1,0 +1,19 @@
+{
+  "name": "rattl",
+  "version": "1.0.0",
+  "description": "A simple website crawler to find dead links, errors and external resources",
+  "main": "index.js",
+  "scripts": {
+    "start:dev": "nodemon",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Martin Hauke Jr.",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^18.7.16",
+    "nodemon": "^2.0.19",
+    "prettier": "2.7.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.8.3"
+  }
+}
