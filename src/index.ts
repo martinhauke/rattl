@@ -1,6 +1,6 @@
 import axios, { AxiosResponse } from 'axios'
 import parse from 'node-html-parser'
-import {exit} from "process";
+import { exit } from 'process'
 
 type CrawledPage = {
   url: string
