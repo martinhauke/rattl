@@ -2,9 +2,14 @@ import axios, { AxiosResponse } from 'axios'
 import parse from 'node-html-parser'
 import { exit } from 'process'
 
-type CrawledPage = {
+type CrawledUrl = {
   url: string
   status: number
+}
+
+type UncrawledUrl = {
+  url: string
+  referer: string
 }
 
 const startUrl = process.argv[2]
@@ -13,26 +18,26 @@ if (startUrl === undefined) {
   exit(1)
 }
 
-const crawledUrls: Record<string, CrawledPage> = {}
-let uncrawledUrls: string[] = [startUrl]
+const crawledUrls: Record<string, CrawledUrl> = {}
+let uncrawledUrls: Record<string, UncrawledUrl> = {
+  [startUrl]: { url: startUrl, referer: startUrl },
+}
 
 const getFullUrl = (href: string) =>
   href.startsWith('/') ? startUrl + href : href
 
-const addToUncrawledUrls = (url: string) => {
-  if (
-    uncrawledUrls.includes(url) ||
-    crawledUrls[url] ||
-    !url.startsWith(startUrl)
-  ) {
+const addToUncrawledUrls = (url: string, referer: string) => {
+  if (uncrawledUrls[url] || crawledUrls[url] || !url.startsWith(startUrl)) {
     return
   }
-  uncrawledUrls = [...uncrawledUrls, url]
+  uncrawledUrls[url] = { url, referer }
 }
 
-const createAxiosPromiseFromUrl = (url: string) => {
+const createAxiosPromiseFromUrl = (url: string): Promise<AxiosResponse> => {
   return axios
-    .get(url, { validateStatus: () => true })
+    .get(url, {
+      validateStatus: () => true,
+    })
     .catch((e): AxiosResponse => {
       return {
         data: null,
@@ -47,13 +52,15 @@ const createAxiosPromiseFromUrl = (url: string) => {
 const greenText = (text: string) => `\x1b[32m${text}\x1b[0m`
 const redText = (text: string) => `\x1b[31m${text}\x1b[0m`
 
-const handleResponse = (response: AxiosResponse, index: number) => {
+const handleResponse = (response: AxiosResponse) => {
+  const url = response.config.url || ''
   if (response.status === 200) {
-    console.log(greenText('url: ' + uncrawledUrls[index]))
+    console.log(greenText('url: ' + url))
   } else {
     console.log(redText('-----------------------------------'))
-    console.log(redText('url:' + uncrawledUrls[index]))
-    console.log(redText('status:' + response.status))
+    console.log(redText('url: ' + url))
+    console.log(redText('status: ' + response.status))
+    console.log(redText('referer: ' + uncrawledUrls[url].referer))
   }
   if (response.data) {
     const content = parse(response.data)
@@ -62,26 +69,26 @@ const handleResponse = (response: AxiosResponse, index: number) => {
       .map((a) => getFullUrl(a.getAttribute('href') || ''))
       .filter((it) => it !== '')
 
-    links.forEach((link) => addToUncrawledUrls(link))
+    links.forEach((link) => addToUncrawledUrls(link, url))
   }
-  crawledUrls[uncrawledUrls[index]] = {
-    url: uncrawledUrls[index],
+  crawledUrls[url] = {
+    url: url,
     status: response.status,
   }
-  uncrawledUrls = [
-    ...uncrawledUrls.slice(0, index),
-    ...uncrawledUrls.slice(index),
-  ]
+  delete uncrawledUrls[url]
 }
 
 const main = async () => {
-  while (uncrawledUrls.length > 0) {
-    uncrawledUrls = uncrawledUrls.filter((it) => !crawledUrls[it])
-    await axios
-      .all(uncrawledUrls.map(createAxiosPromiseFromUrl))
-      .then((responses) => {
-        responses.forEach(handleResponse)
-      })
+  while (Object.keys(uncrawledUrls).length > 0) {
+    const alreadyCrawledEntries = Object.keys(uncrawledUrls).filter(
+      (it) => crawledUrls[it]
+    )
+    alreadyCrawledEntries.forEach((it) => delete uncrawledUrls[it])
+    const nextUrls = Object.keys(uncrawledUrls)
+
+    await axios.all(nextUrls.map(createAxiosPromiseFromUrl)).then((responses) => {
+      responses.forEach(handleResponse)
+    })
   }
 }
 
