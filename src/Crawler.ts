@@ -52,7 +52,8 @@ const getFullUrl = (href: string, baseUrl: string): string => {
 export const crawl = async (
   startUrl: string,
   showErrorsOnly: boolean,
-  showExternalLinks: boolean
+  showExternalLinks: boolean,
+  limit?: number
 ) => {
   const crawledUrls: Record<string, CrawledUrl> = {}
   let uncrawledUrls: Record<string, UncrawledUrl> = {
@@ -110,7 +111,7 @@ export const crawl = async (
       (it) => crawledUrls[it]
     )
     alreadyCrawledEntries.forEach((it) => delete uncrawledUrls[it])
-    const nextUrls = Object.keys(uncrawledUrls)
+    const nextUrls = Object.keys(uncrawledUrls).slice(0, limit)
 
     await axios
       .all(nextUrls.map(createAxiosPromiseFromUrl))
