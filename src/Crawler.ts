@@ -2,6 +2,8 @@ import axios, { AxiosResponse } from 'axios'
 import parse, { HTMLElement } from 'node-html-parser'
 import { writeResultToConsole } from './Output'
 import { URL } from 'url'
+import * as https from "https";
+import * as http from "http";
 
 type CrawledUrl = {
   url: string
@@ -20,9 +22,13 @@ export type ExternalResource = {
 }
 
 const createAxiosPromiseFromUrl = (url: string): Promise<AxiosResponse> => {
+  const httpAgent = new http.Agent({family: 4})
+  const httpsAgent = new https.Agent({family: 4})
   return axios
     .get(url, {
       validateStatus: () => true,
+      httpAgent,
+      httpsAgent,
     })
     .catch((e): AxiosResponse => {
       return {
