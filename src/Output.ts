@@ -19,13 +19,13 @@ const externalResourcesToString = (resources?: ExternalResource[]) => {
 
   const singleResourceToString = (resource: ExternalResource) => {
     return (
-      `\t\ttag name: ${resource.tagName}\n` +
+      `\n\t\ttag name: ${resource.tagName}\n` +
       `\t\treference url: ${resource.externalUrl}`
     )
   }
 
   return (
-    '\n\texternal resources:\n' +
+    '\n\texternal resources:' +
     resources.map((it) => singleResourceToString(it))
   )
 }
