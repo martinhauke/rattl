@@ -147,14 +147,8 @@ const findExternalResources = (
     startUrl,
     url
   )
-  // TODO also look at srcset
-  const imgTagUrls = filterByTagAndAttribute(
-    content,
-    'img',
-    'src',
-    startUrl,
-    url
-  )
+  const imgTagUrls = findUrlsInImgTags(content, startUrl, url)
+
   return [...linkTagUrls, ...scriptTagUrls, ...iframeTagUrls, ...imgTagUrls]
 }
 
@@ -184,13 +178,17 @@ const getSourceCodeFromScriptTag = (element: HTMLElement): string => {
   return ''
 }
 
-const findUrlsInSourceCode = (content: HTMLElement, startUrl: string): string[] => {
+const findUrlsInSourceCode = (
+  content: HTMLElement,
+  startUrl: string
+): string[] => {
   const urlRegex =
     /(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])/g
-  const urlsInSource = content.querySelectorAll('script').map((it) =>
-    getSourceCodeFromScriptTag(it)
-      .match(urlRegex)
-      ?.filter((urlInCode) => !urlInCode.startsWith(startUrl)) || []
+  const urlsInSource = content.querySelectorAll('script').map(
+    (it) =>
+      getSourceCodeFromScriptTag(it)
+        .match(urlRegex)
+        ?.filter((urlInCode) => !urlInCode.startsWith(startUrl)) || []
   )
 
   return urlsInSource.flat()
@@ -217,6 +215,42 @@ const findUrlsInScriptTags = (
   })
 
   return [...urlsInSrcAttribute, ...urlsInSoruceCode]
+}
+
+const findUrlsInImgTags = (
+  content: HTMLElement,
+  startUrl: string,
+  url: string
+): ExternalResource[] => {
+  const urlsInSrc: ExternalResource[] = filterByTagAndAttribute(
+    content,
+    'img',
+    'src',
+    startUrl,
+    url
+  )
+
+  const urlsInSrcSet: ExternalResource[] = content
+    .querySelectorAll('img')
+    .map((element) => {
+      return (
+        element
+          .getAttribute('srcset')
+          ?.split(',')
+          .map((it) => it.trim()) || []
+      )
+    })
+    .flat()
+    .filter((it) => it !== '' && !it.startsWith(startUrl))
+    .map((u) => {
+      return {
+        url,
+        tagName: 'img',
+        externalUrl: getFullUrl(u, url),
+      }
+    })
+
+  return [...urlsInSrc, ...urlsInSrcSet]
 }
 
 const filterByTagAndAttribute = (
