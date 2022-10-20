@@ -2,8 +2,8 @@ import axios, { AxiosResponse } from 'axios'
 import parse, { HTMLElement } from 'node-html-parser'
 import { writeResultToConsole } from './Output'
 import { URL } from 'url'
-import * as https from "https";
-import * as http from "http";
+import * as https from 'https'
+import * as http from 'http'
 
 type CrawledUrl = {
   url: string
@@ -22,8 +22,8 @@ export type ExternalResource = {
 }
 
 const createAxiosPromiseFromUrl = (url: string): Promise<AxiosResponse> => {
-  const httpAgent = new http.Agent({family: 4})
-  const httpsAgent = new https.Agent({family: 4})
+  const httpAgent = new http.Agent({ family: 4 })
+  const httpsAgent = new https.Agent({ family: 4 })
   return axios
     .get(url, {
       validateStatus: () => true,
@@ -139,13 +139,7 @@ const findExternalResources = (
     startUrl,
     url
   )
-  const scriptTagUrls = filterByTagAndAttribute(
-    content,
-    'script',
-    'src',
-    startUrl,
-    url
-  )
+  const scriptTagUrls = findUrlsInScriptTags(content, startUrl, url)
   const iframeTagUrls = filterByTagAndAttribute(
     content,
     'iframe',
@@ -164,13 +158,74 @@ const findExternalResources = (
   return [...linkTagUrls, ...scriptTagUrls, ...iframeTagUrls, ...imgTagUrls]
 }
 
+const getSourceCodeFromScriptTag = (element: HTMLElement): string => {
+  if (element.textContent) {
+    return element.textContent
+  }
+
+  const src = element.getAttribute('src')
+  if (src) {
+    const httpAgent = new http.Agent({ family: 4 })
+    const httpsAgent = new https.Agent({ family: 4 })
+    axios
+      .get(src, {
+        validateStatus: () => true,
+        httpAgent,
+        httpsAgent,
+      })
+      .then((respone) => {
+        return respone.data
+      })
+      .catch((e) => {
+        console.log(e.message)
+      })
+  }
+
+  return ''
+}
+
+const findUrlsInSourceCode = (content: HTMLElement, startUrl: string): string[] => {
+  const urlRegex =
+    /(http|ftp|https):\/\/([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])/g
+  const urlsInSource = content.querySelectorAll('script').map((it) =>
+    getSourceCodeFromScriptTag(it)
+      .match(urlRegex)
+      ?.filter((urlInCode) => !urlInCode.startsWith(startUrl)) || []
+  )
+
+  return urlsInSource.flat()
+}
+
+const findUrlsInScriptTags = (
+  content: HTMLElement,
+  startUrl: string,
+  url: string
+): ExternalResource[] => {
+  const urlsInSrcAttribute = filterByTagAndAttribute(
+    content,
+    'script',
+    'src',
+    startUrl,
+    url
+  )
+
+  const urlsInSoruceCode: ExternalResource[] = findUrlsInSourceCode(
+    content,
+    startUrl
+  ).map((externalUrl) => {
+    return { url, tagName: 'script (source code)', externalUrl }
+  })
+
+  return [...urlsInSrcAttribute, ...urlsInSoruceCode]
+}
+
 const filterByTagAndAttribute = (
   content: HTMLElement,
   tagName: string,
   attributeName: string,
   startUrl: string,
   url: string
-) => {
+): ExternalResource[] => {
   return content
     .querySelectorAll(tagName)
     .map((element) => {
