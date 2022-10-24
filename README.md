@@ -22,14 +22,17 @@ yarn execute -u <URL> [-eR] [-limit <limit>]
 
 ### Options
 
--e, --errors-only Only show urls with errors (e.g. 404, external Resources)
+```
+-e, --errors-only
+  Only show urls with errors (e.g. 404, external Resources)
 
--R, --show-external-resources Show urls that use external resources (e.g. media embeds, external javascript, images)
+-R, --show-external-resources
+  Show urls that use external resources (e.g. media embeds, external javascript, images)
 
 -l, --limit <limit>
-Limit the amount of parallel requests. This might be needed for some sites to avoid timeouts or simply exceeding the
-maximum amount of parallel requests the server is allowed to handle.
-
+  Limit the amount of parallel requests. This might be needed for some sites to avoid timeouts or simply exceeding the
+  maximum amount of parallel requests the server is allowed to handle.
+```
 
 ### Example
 
